@@ -29,7 +29,7 @@ ofstream reward_output;
 int action_sel=2; // 1 is greedy, 2 is e-greedy
 int environment= 2; // 1 is small grid, 2 is Cliff walking
 int algorithm = 1; //1 is Q-learning, 2 is Sarsa
-int stochastic_actions=0; // 0 is deterministic actions, 1 for stochastic actions
+int stochastic_actions=1; // 0 is deterministic actions, 1 for stochastic actions
 int num_episodes=3000; //total learning episodes
 float learn_rate=0.1; // how much the agent weights each new sample
 float disc_factor=0.99; // how much the agent weights future rewards
@@ -134,10 +134,42 @@ int action_selection()
         return rand()%4; //Currently returing a random action, need to code the greedy strategy
     }
     
-    if(action_sel==2)//epsilon-greedy, selects the action with the largest Q value with prob (1-exp_rate) and a random action with prob (exp_rate)
+    if (action_sel == 2) // epsilon-greedy
     {
-        return rand()%4; //Currently returing a random action, need to code the e-greedy strategy
+        float epsilon = 0.05; // Valor de epsilon
         
+        // Genera un número aleatorio entre 0 y 1
+        float rand_num = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+        
+        if (rand_num < epsilon) // Exploración: elige una acción aleatoria
+        {
+            action_taken = rand() % 4;
+            return action_taken;  // Devuelve un número aleatorio entre 0 y 3 (que corresponde a las 4 acciones posibles)
+        }
+        else // Explotación: elige la acción con el mayor valor de Q
+        {
+            float max_q = Qvalues[x_pos][y_pos][0];
+            int max_action = 0;
+            
+            for (int action = 0; action < 4; ++action)
+            {
+                if (Qvalues[x_pos][y_pos][action] > max_q)
+                {
+                    max_q = Qvalues[x_pos][y_pos][action];
+                    max_action = action;
+                }
+                else if (Qvalues[x_pos][y_pos][action] == max_q)
+                {
+                    // Si hay múltiples acciones con el mismo valor máximo de Q, elige aleatoriamente entre ellas
+                    if (rand() % 2 == 0)
+                    {
+                        max_action = action;
+                    }
+                }
+            }
+            action_taken = max_action;
+            return action_taken; // Devuelve la acción con el mayor valor de Q
+        }
     }
     return 0;
 }
@@ -153,6 +185,20 @@ void move(int action)
     if(stochastic_actions)
     {
         //Code here should change the value of variable action, based on the stochasticity of the action outcome
+        float rand_num = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+
+        if (rand_num < 0.8){
+
+        }
+        else if (rand_num < 0.9)
+        {
+            action = (action + 1) % 4; // Right
+        }
+        else if (rand_num < 1.0)
+        {
+            action = (action + 3) % 4; // Left
+        }
+        
     }
     
     //After determining the real outcome of the chosen action, move the agent
@@ -209,12 +255,14 @@ void update_q_prev_state() //Updates the Q value of the previous state
     {
         
         
-        Qvalues[prev_x_pos][prev_y_pos][action_taken]= Qvalues[prev_x_pos][prev_y_pos][action_taken]; //How should the Q values be updated?
+        Qvalues[prev_x_pos][prev_y_pos][action_taken]= (1-learn_rate)*Qvalues[prev_x_pos][prev_y_pos][action_taken] + 
+        (learn_rate*(reward[x_pos][y_pos] + (disc_factor*Qvalues[x_pos][y_pos][action_taken]))); //How should the Q values be updated?
 
     }
     else//Update the Q value of the previous state and action if the agent has reached a terminal state
     {
-        Qvalues[prev_x_pos][prev_y_pos][action_taken]=  Qvalues[prev_x_pos][prev_y_pos][action_taken];
+        Qvalues[prev_x_pos][prev_y_pos][action_taken]= (1-learn_rate)*Qvalues[prev_x_pos][prev_y_pos][action_taken] + 
+        (learn_rate*(reward[x_pos][y_pos] + (disc_factor*Qvalues[x_pos][y_pos][action_taken])));
 
     }
     
@@ -242,6 +290,8 @@ void Qlearning()
 {
    //Follow the  steps in the pseudocode in the slides
    move(action_selection());
+
+   update_q_prev_state();
    cum_reward=cum_reward+reward[x_pos][y_pos]; //Add the reward obtained by the agent to the cummulative reward of the agent in the current episode
 }
 
